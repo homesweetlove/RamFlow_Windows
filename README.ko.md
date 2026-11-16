@@ -136,3 +136,7 @@ Mock 회귀, 자체 생성 자식 프로세스만 변경하는 Windows API 왕�
 GPU/ACPI 온도 카운터가 없으면 미지원으로 표시합니다. GPU 값은 관측 전용 dedicated usage이며 전체 VRAM 용량이나 모델별 KV cache 보장을 의미하지 않습니다. Page-in은 페이지 수이며 hard-fault 사건 수가 아닙니다. 앱 준비 시간과 스케줄링 지터는 실제 입력 지연이 아닙니다. 게임/LLM/IDE 결과는 사용자가 선택한 런타임/CSV로 측정합니다. 환경별 성능 개선 수치는 보장하지 않습니다.
 
 WinUI 3의 별도 배포 의존성 대신 WPF를 선택했습니다. 커널 드라이버나 후킹을 사용하지 않습니다. 공식 API와 검증 범위는 [아키텍처](docs/NATIVE_ARCHITECTURE.md), [검증](docs/VALIDATION.md)를 참고하세요. Python 0.2.0 실행 안내는 [기존 버전 문서](docs/LEGACY_PYTHON.md)에 있습니다.
+
+## 라이선스
+
+직접 작성한 소스 코드는 [MIT 라이선스](LICENSE)로 공개합니다. 동봉된 의존성과 타사 구성 요소에는 각각의 라이선스가 적용됩니다. 자세한 내용은 [서드파티 고지](THIRD_PARTY_NOTICES.md)를 참고하세요.

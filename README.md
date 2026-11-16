@@ -135,3 +135,7 @@ The documented Background I/O Mode can only be applied to the calling process, s
 If GPU/ACPI temperature counters are unavailable, they are shown as unsupported. GPU values represent observable dedicated usage only; they do not imply total VRAM capacity or guarantee per-model KV cache availability. Page-in is a page count, not a hard-fault event count. Application-ready time and scheduling jitter are not equivalent to real input latency. Game/LLM/IDE results are measured using the runtime or CSV selected by the user. Performance improvements are not guaranteed across environments.
 
 WPF was chosen instead of WinUI 3 to avoid an additional deployment dependency. RamFlow does not use kernel drivers or hooks. See [Architecture](docs/NATIVE_ARCHITECTURE.md) and [Validation](docs/VALIDATION.md) for details on official APIs and validation scope. Instructions for the Python 0.2.0 version are available in the [legacy version documentation](docs/LEGACY_PYTHON.md).
+
+## License
+
+Project-authored source code is licensed under the [MIT License](LICENSE). Bundled dependencies and third-party components retain their respective licenses; see [Third-party notices](THIRD_PARTY_NOTICES.md).
