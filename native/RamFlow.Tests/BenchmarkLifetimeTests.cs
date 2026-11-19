@@ -58,6 +58,17 @@ public static class BenchmarkLifetimeTests
             check(ReferenceEquals(lifetime.ExportAsync(() => worker), worker),
                 "Shutdown must track the raw export worker rather than a caller continuation");
             await exportStarted.Task.WaitAsync(Timeout);
+            bool duplicateWriterInvoked = false;
+            bool duplicateRejected = false;
+            try {
+                _ = lifetime.ExportAsync(() => {
+                    duplicateWriterInvoked = true;
+                    return Task.CompletedTask;
+                });
+            } catch (InvalidOperationException) { duplicateRejected = true; }
+            check(duplicateRejected, "A second export must be rejected while the first is pending");
+            check(!duplicateWriterInvoked, "A rejected export must not invoke its writer");
+            check(!worker.IsCompleted, "Rejecting a second export must leave the first pending");
             disposer.Start();
             disposerStarted = true;
             await disposeStarted.Task.WaitAsync(Timeout);
