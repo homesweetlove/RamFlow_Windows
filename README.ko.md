@@ -40,6 +40,12 @@
 [실제 앱 후속 검증](docs/REAL_APP_STUDY.ko.md): 같은 합성 배경 부하에서 Chrome 생성 대시보드와 VS Code 생성 문서 기능을 앱별5회 교차 비교했습니다. 검색·정렬·코드 완성·편집/저장 지연이 각각 약45–49% 줄었고 배경 처리량은 약60% 줄었습니다.
 
 
+## 논문
+
+설계와 세 번의 실측을 정리한 기술 논문입니다. 모든 수치는 공개한 CSV에서 다시 계산할 수 있습니다.
+
+**[RamFlow 논문 (한국어 PDF)](paper/ko/RamFlow-paper-ko.pdf)** · [English PDF](paper/en/RamFlow-paper-en.pdf) · [원본·재현 방법](paper/README.md)
+
 ## 엔지니어링 사례 — 문제 정의부터 검증까지
 
 RamFlow의 목표는 단순히 **“RAM을 최대한 비우는 것”이 아니라 현재 사용 중인 작업을 보호하면서 자원 압박에 보수적으로 대응하는 것**입니다.
