@@ -1,0 +1,41 @@
+% System architecture of RamFlow 0.3.4 (+ background-control revision)
+\begin{tikzpicture}[
+  font=\footnotesize\sffamily\linespread{1.0}\selectfont,
+  box/.style={draw=ink2!60,rounded corners=2.5pt,fill=white,align=center,inner sep=4pt,minimum height=9mm,line width=0.5pt,text width=#1},
+  box/.default=27mm,
+  core/.style={box=#1,fill=accent!7,draw=accent!70},
+  core/.default=34mm,
+  zone/.style={draw=rule,rounded corners=4pt,fill=panel,inner sep=6pt,line width=0.5pt},
+  lab/.style={font=\scriptsize\sffamily\bfseries,text=ink2,anchor=south west,inner sep=2pt},
+  note/.style={font=\scriptsize\sffamily,text=ink2,align=center},
+  arr/.style={-{Stealth[length=4pt]},ink2,line width=0.55pt},
+  darr/.style={{Stealth[length=4pt]}-{Stealth[length=4pt]},ink2,line width=0.55pt}]
+  % engine (two columns)
+  \node[core] (sense) at (0,0) {\KoEn{자원 센서}{Resource sensors}\\{\scriptsize RAM · Commit · Standby\\Page-in · CPU}};
+  \node[core,below=4mm of sense] (press) {\KoEn{압박 추정}{Pressure estimator}\\{\scriptsize EMA $+$ \KoEn{히스테리시스}{hysteresis}}};
+  \node[core,below=4mm of press] (prot) {\KoEn{보호 규칙}{Protection rules}\\{\scriptsize \KoEn{전경 · 시스템 · 활성 · 불확실}{foreground, system, active, unknown}}};
+  \node[core,right=7mm of sense] (queue) {\KoEn{배경 작업 큐}{Background job queue}\\{\scriptsize \KoEn{메모리 여유 기반 입장}{headroom-based admission}}};
+  \node[core,below=4mm of queue] (act) {\KoEn{개입 사다리}{Intervention ladder}\\{\scriptsize \KoEn{메모리·CPU 우선순위 · EcoQoS\\CPU Sets · 조건부 WS 축소}{memory/CPU priority, EcoQoS,\\CPU Sets, gated WS trim}}};
+  \node[core,below=4mm of act] (journal) {\KoEn{복원 저널}{Restore journal}\\{\scriptsize \KoEn{원래 값 · PID 신원}{original values, PID identity}}};
+  \draw[arr] (sense) -- (press);
+  \draw[arr] (press) -- (prot);
+  \draw[arr] (press) -- (act);
+  \draw[arr] (prot.east) -- ++(3.5mm,0) |- ($(act.west)+(0,-2.5mm)$);
+  \draw[arr] (sense) -- (queue);
+  \draw[arr] (act) -- (journal);
+  \begin{scope}[on background layer]
+    \node[zone,fit=(sense)(prot)(queue)(journal)] (eng) {};
+  \end{scope}
+  \node[lab] at (eng.north west) {\KoEn{분리 엔진 \texttt{RamFlow.Service --serve} · 사용자 세션}{Separate engine \texttt{RamFlow.Service --serve} (user session)}};
+  % user-facing processes
+  \node[box,left=25mm of sense.west,anchor=east] (ui) {\KoEn{설정·도구 화면}{Settings \& tools UI}\\{\scriptsize WPF}};
+  \node[box,below=13mm of ui] (tray) {\KoEn{경량 트레이}{Lightweight tray}\\{\scriptsize WinForms}};
+  \draw[darr] (ui) -- node[note,right,xshift=1pt]{\KoEn{준비 확인 후\\WPF 종료}{handoff, then\\WPF exits}} (tray);
+  \draw[darr] (ui.east) -- node[note,above]{Named Pipe} node[note,below]{\KoEn{사용자 SID별}{per user SID}} (ui.east -| eng.west);
+  \draw[darr] (tray.east) -- (tray.east -| eng.west);
+  % OS and service
+  \node[box=27mm,draw=ink2!40,text=ink2,below=7mm of tray] (scm) {\KoEn{선택적 SCM 서비스}{Optional SCM service}\\{\scriptsize \KoEn{Session 0 · 관측만}{Session 0, observe only}}};
+  \path let \p1=(scm.west), \p2=(eng.east) in node[box=\x2-\x1-8pt,fill=panel,draw=rule,anchor=north west,minimum height=8mm] (os) at ($(scm.south west)+(0,-4mm)$) {\KoEn{문서화된 Windows API만 사용}{Documented Windows APIs only}\\{\scriptsize\texttt{SetProcessInformation} · \texttt{SetPriorityClass} · CPU Sets · PDH · \texttt{EmptyWorkingSet}}};
+  \draw[arr] (eng.south) -- (eng.south |- os.north);
+  \draw[arr] (scm.south) -- (scm.south |- os.north);
+\end{tikzpicture}

@@ -1,0 +1,40 @@
+% Per-process decision path in one engine tick
+\begin{tikzpicture}[
+  font=\footnotesize\sffamily\linespread{1.0}\selectfont,
+  stp/.style={draw=ink2!60,rounded corners=2.5pt,fill=white,align=center,inner sep=4pt,text width=52mm,line width=0.5pt},
+  test/.style={draw=accent!70,fill=accent!7,rounded corners=2.5pt,align=center,inner sep=4pt,text width=52mm,line width=0.5pt},
+  stop/.style={draw=rule,fill=panel,rounded corners=2.5pt,align=center,inner sep=4pt,text width=31mm,text=ink2,font=\scriptsize\sffamily\linespread{1.0}\selectfont},
+  act/.style={draw=accent,fill=accent!18,rounded corners=2.5pt,align=center,inner sep=4pt,text width=52mm,line width=0.6pt},
+  arr/.style={-{Stealth[length=4pt]},ink2,line width=0.55pt},
+  yes/.style={font=\scriptsize\sffamily,text=ink2,inner sep=2pt},
+  side/.style={font=\scriptsize\sffamily\bfseries,text=ink2,align=center},
+  node distance=4mm]
+  \node[stp] (s) {\KoEn{센서 샘플 \& 압박 수준 갱신 (2초마다)}{Sample sensors \& update pressure (every 2\,s)}};
+  \node[test,below=of s] (p) {\KoEn{보호 대상인가?}{Protected?}\\{\scriptsize\KoEn{시스템 · 전경 · 예외 · 활동 불확실 · 활성 작업}{system, foreground, whitelist, unknown, active}}};
+  \node[test,below=7mm of p] (e) {\KoEn{지정 배경 작업, 또는 30분 이상 비활성?}{Designated job, or idle $\geq$\,30\,min?}};
+  \node[test,below=of e] (d) {\KoEn{압박 $\geq$ Moderate · CPU 압박 · 배터리 · 큐 소유 중 하나?}{Pressure $\geq$ Moderate, CPU pressure, battery, or queue-owned?}};
+  \node[act,below=of d] (a) {\KoEn{저널 기록 후 메모리·CPU 우선순위와 EcoQoS 낮춤}{Journal, then lower memory/CPU priority \& EcoQoS}};
+  \node[test,below=10mm of a] (t) {\KoEn{가용 RAM $<$ 1\,GiB 이고 압박 $\geq$ High?}{Available $<$ 1\,GiB and pressure $\geq$ High?}};
+  \node[test,below=of t] (t2) {\KoEn{비활성 10/3/1분 · 150\,MiB 이상 · 쿨다운 · 직전 재확인 모두 통과?}{Idle 10/3/1\,min, $\geq$\,150\,MiB, cool-downs, last-moment recheck?}};
+  \node[act,below=of t2] (w) {\KoEn{Working Set 축소 (한 주기에 최대 1개)}{Trim one working set (at most one per tick)}};
+  \node[stop,right=10mm of e] (n1) {\KoEn{변경 없음\\이미 낮춘 값은 복원}{No change;\\restore if lowered earlier}};
+  \node[stop,right=10mm of t2] (n2) {\KoEn{상주 페이지 유지\\(복귀 비용 회피)}{Keep resident pages\\(avoid return cost)}};
+  \draw[arr] (s) -- (p);
+  \draw[arr] (p) -- node[right,yes]{\KoEn{아니요}{no}} (e);
+  \draw[arr] (e) -- node[right,yes]{\KoEn{예}{yes}} (d);
+  \draw[arr] (d) -- node[right,yes]{\KoEn{예}{yes}} (a);
+  \draw[arr] (t) -- node[right,yes]{\KoEn{예}{yes}} (t2);
+  \draw[arr] (t2) -- node[right,yes]{\KoEn{예}{yes}} (w);
+  \draw[arr] (p.east) -| node[pos=0.2,above,yes]{\KoEn{예}{yes}} (n1.north);
+  \draw[arr] (e.east) -- node[above,yes]{\KoEn{아니요}{no}} (n1.west);
+  \draw[arr] (d.east) -| node[pos=0.2,below,yes]{\KoEn{아니요}{no}} (n1.south);
+  \draw[arr] (t.east) -| node[pos=0.2,above,yes]{\KoEn{아니요}{no}} (n2.north);
+  \draw[arr] (t2.east) -- node[above,yes]{\KoEn{아니요}{no}} (n2.west);
+  % separate evaluation of the trim path for every unprotected process
+  \draw[arr,densely dashed] (p.west) -- ++(-6mm,0) |- (t.west);
+  % layer brackets
+  \draw[accent,line width=0.8pt] ($(e.north west)+(-15mm,0)$) -- ($(a.south west)+(-15mm,0)$);
+  \node[side,rotate=90,anchor=south,text=accent] at ($($(e.north west)!0.5!(a.south west)$)+(-15.5mm,0)$) {\KoEn{되돌릴 수 있음}{reversible}};
+  \draw[offc,line width=0.8pt] ($(t.north west)+(-15mm,0)$) -- ($(w.south west)+(-15mm,0)$);
+  \node[side,rotate=90,anchor=south,text=offc] at ($($(t.north west)!0.5!(w.south west)$)+(-15.5mm,0)$) {\KoEn{되돌릴 수 없음}{irreversible}};
+\end{tikzpicture}

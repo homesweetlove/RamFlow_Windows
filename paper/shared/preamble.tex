@@ -1,0 +1,82 @@
+% Shared preamble for the Korean and English RamFlow papers.
+% Each main file defines \ifko (true for Korean) before \input-ing this file.
+\usepackage[a4paper,top=24mm,bottom=26mm,left=25mm,right=25mm,headsep=8mm,footskip=11mm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{mathpazo}
+\usepackage[no-math]{fontspec}
+\ifko
+  % Korean: Noto CJK KR carries both Hangul and Latin glyphs, so one family
+  % keeps the colour of the page even. Lines break at inter-word spaces.
+  \setmainfont{Noto Serif CJK KR}[Scale=0.94,BoldFont={* SemiBold}]
+  \setsansfont{Noto Sans CJK KR}[Scale=0.92,BoldFont={* Bold}]
+  \setmonofont{DejaVu Sans Mono}[Scale=0.80]
+  \linespread{1.30}
+  \XeTeXlinebreaklocale "ko"
+  \XeTeXlinebreakskip=0pt plus 0.6pt
+  \AtBeginDocument{\renewcommand{\emph}[1]{\textsf{#1}}}
+  % inside diagrams and tables, break only at spaces and never letter-space
+  \AtBeginDocument{\tikzset{every picture/.append style={execute at begin picture={\XeTeXlinebreaklocale ""\XeTeXlinebreakskip=0pt\relax},execute at end picture={\XeTeXlinebreaklocale "ko"}}}}
+  \renewcommand{\figurename}{그림}
+  \renewcommand{\tablename}{표}
+  \renewcommand{\contentsname}{차례}
+  \renewcommand{\appendixname}{부록}
+  \renewcommand{\abstractname}{초록}
+  \AtBeginDocument{\floatname{algorithm}{알고리즘}}
+  \AtBeginDocument{\renewcommand{\figurename}{그림}\renewcommand{\tablename}{표}}
+\else
+  \setmainfont{TeX Gyre Pagella}
+  \setsansfont{Noto Sans CJK KR}[Scale=0.92]
+  \setmonofont{DejaVu Sans Mono}[Scale=0.80]
+  \linespread{1.12}
+\fi
+\usepackage{microtype}
+\setlength{\emergencystretch}{1.5em}
+\usepackage{xcolor}
+\definecolor{accent}{HTML}{2A78D6}
+\definecolor{offc}{HTML}{EB6834}
+\definecolor{ink2}{HTML}{52514E}
+\definecolor{rule}{HTML}{D9D8D3}
+\definecolor{panel}{HTML}{F4F3F0}
+\usepackage{graphicx}
+\usepackage{booktabs,tabularx,multirow,array}
+\usepackage{caption}
+\captionsetup{font=small,labelfont={bf,sf},labelsep=period,skip=5pt}
+\usepackage{enumitem}
+\setlist{itemsep=1pt,topsep=3pt,leftmargin=1.6em}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,backgrounds,shapes.geometric}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{titlesec}
+\titleformat{\section}{\large\sffamily\bfseries}{\color{accent}\thesection}{0.8em}{}
+\titleformat{\subsection}{\normalsize\sffamily\bfseries}{\color{accent}\thesubsection}{0.7em}{}
+\titleformat{\paragraph}[runin]{\normalsize\sffamily\bfseries}{}{}{}[.]
+\titlespacing*{\section}{0pt}{14pt plus 3pt}{6pt}
+\titlespacing*{\subsection}{0pt}{10pt plus 2pt}{4pt}
+\titlespacing*{\paragraph}{0pt}{6pt plus 1pt}{0.6em}
+\usepackage{fancyhdr}
+\pagestyle{fancy}\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhead[L]{\footnotesize\sffamily\color{ink2}RamFlow}
+\fancyhead[R]{\footnotesize\sffamily\color{ink2}\shorttitle}
+\fancyfoot[C]{\footnotesize\sffamily\color{ink2}\thepage}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\footnotesize\sffamily\color{ink2}\thepage}}
+\usepackage[hidelinks,unicode]{hyperref}
+\hypersetup{colorlinks=true,linkcolor=accent,citecolor=accent,urlcolor=accent}
+\usepackage{xurl}
+\usepackage[numbers,sort&compress]{natbib}
+\setlength{\bibsep}{2pt plus 1pt}
+\renewcommand{\bibfont}{\small}
+\tikzset{prose/.style={}}
+\ifko\tikzset{prose/.style={execute at begin picture={\XeTeXlinebreaklocale "ko"\XeTeXlinebreakskip=0pt plus 0.6pt\relax}}}\fi
+\newcommand{\KoEn}[2]{\ifko #1\else #2\fi}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\pct}{\%}
+\input{../shared/numbers.tex}
+% A rounded "finding" box used for key takeaways
+\newcommand{\finding}[1]{%
+  \par\smallskip\noindent
+  \begin{tikzpicture}[prose]
+    \node[fill=panel,rounded corners=3pt,inner sep=7pt,text width=\dimexpr\linewidth-14pt\relax,align=left]{\small #1};
+    \fill[accent,rounded corners=1pt] ($(current bounding box.north west)+(0,-1pt)$) rectangle ($(current bounding box.south west)+(2.2pt,1pt)$);
+  \end{tikzpicture}\par\smallskip}

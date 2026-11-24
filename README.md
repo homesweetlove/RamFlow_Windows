@@ -39,6 +39,12 @@ Closing the window transfers control to a readiness-confirmed lightweight tray, 
 RamFlow is a Windows resource orchestrator designed to protect the work you are actively using. The latest release, **0.3.4, is implemented in C#/.NET 10 + WPF**. The Python/PySide6 0.2.0 version is preserved for compatibility and regression validation.
 
 
+## Paper
+
+A technical report covering the design and three measurement studies. Every number is recomputed from the published CSVs.
+
+**[RamFlow paper (English PDF)](paper/en/RamFlow-paper-en.pdf)** · [Korean PDF](paper/ko/RamFlow-paper-ko.pdf) · [Sources and reproduction](paper/README.md)
+
 ## Engineering story — from constraints to measured results
 
 RamFlow is designed around a question: **how can a low-memory Windows PC protect the user's active work while making conservative, reversible resource-management decisions?** This is not an automatic “free RAM” button.
