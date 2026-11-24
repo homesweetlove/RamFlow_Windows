@@ -32,9 +32,9 @@ On one PC (i5-13400, $\approx$24\,GiB RAM) we ran three paired experiments. (1) 
 \section{Introduction}
 \label{sec:intro}
 
-On a PC without generous memory, running a browser, an editor, a build, a download and a local AI model at once makes the application the user is looking at stutter. Programs that promise to fix this have existed for decades. The best known are ``RAM optimizers'' or ``memory boosters'', which usually shrink other processes' working sets to push up the available-memory figure in Task Manager. Russinovich concluded that such tools at best do nothing and at worst seriously degrade performance\citep{russinovich2004}: evicted pages must be read back when the application touches them again\citep{mswset,denning1968}.
+On a PC without generous memory, running a browser, an editor, a build, a download and a local AI model at once makes the application the user is looking at stutter. Programs that promise to fix this have existed for decades. The best known are ``RAM optimizers'' or ``memory boosters'', which usually shrink other processes' working sets to push up the available-memory figure in Task Manager. Russinovich concluded that such tools at best do nothing and at worst seriously degrade performance\citep{russinovich2004}: evicted pages must be read back when the application touches them again\citep{mswset}.
 
-Operating systems already have finer tools. Since 2013 macOS compresses unused memory and naps invisible apps\citep{mavericks2013}, and Windows~10 introduced an in-memory compression store\citep{win10compression}. Windows offers Power Throttling and EcoQoS to run background work in efficient power states\citep{powerthrottling2017,ecoqos2021}. In datacenters, Linux PSI measures the time lost to resource shortage directly and drives memory reclaim\citep{psi,weiner2022tmo}.
+Windows offers public mechanisms too: EcoQoS, for example, marks a process as preferring power efficiency over performance\citep{ecoqos2021}. This report studies how to apply such public mechanisms to other processes carefully and reversibly.
 
 This report asks, at the scale of a personal PC: \textbf{instead of maximising free RAM, if we protect the task in use and request reversible yielding only from background work the user designated, does foreground latency actually fall --- and at what cost?}
 
@@ -55,13 +55,13 @@ We built RamFlow for Windows and revised its design through three rounds of meas
 A process's \emph{working set} is the set of its pages currently resident in physical memory\citep{mswset}. Pages removed from a working set are not lost immediately; they may linger on the standby or modified lists, and a modified page may need to be written to its backing store before reuse\citep{mswset}. \emph{Commit} is the total virtual memory the system has promised; it cannot exceed the commit limit (RAM plus page files). Trimming a working set therefore does not reduce commit --- a fact reflected directly in our trim conditions (\S\ref{sec:design}).
 
 \paragraph{The case against RAM optimizers}
-RAM optimizers raise the available-memory figure by pushing other processes' code and data out of memory, which must later be read back\citep{russinovich2004}. Products such as SoftRAM~95, advertised as doubling memory, were shown to do almost nothing\citep{chen2021softram}. Our first experiment (\S\ref{sec:rq1}) effectively re-tests this critique on Windows~11.
+RAM optimizers raise the available-memory figure by pushing other processes' code and data out of memory, which must later be read back\citep{russinovich2004}. Our first experiment (\S\ref{sec:rq1}) effectively re-tests this critique on Windows~11.
 
-\paragraph{Built-in OS mechanisms}
-macOS compressed memory and App Nap\citep{mavericks2013}, and Windows memory compression\citep{win10compression} and Power Throttling\citep{powerthrottling2017}, run in the kernel with full system knowledge. EcoQoS is an API through which an application marks its own process or threads as efficiency-first via \code{SetProcessInformation}\citep{ecoqos2021,mssetprocinfo}. RamFlow applies this public API to \emph{other} processes, but only to designated or long-idle ones.
+\paragraph{EcoQoS on Windows}
+EcoQoS is an API through which an application marks its own process or threads as efficiency-first via \code{SetProcessInformation}\citep{ecoqos2021,mssetprocinfo}. RamFlow applies this public API to \emph{other} processes, but only to designated or long-idle ones.
 
-\paragraph{Pressure signals and reclaim control}
-Linux PSI reports the share of time tasks were stalled on CPU, memory or I/O\citep{psi}. Meta's TMO uses PSI to let a user-space agent (Senpai) size per-container reclaim, saving 20--32\% of memory across its fleet\citep{weiner2022tmo}. Android's lmkd kills low-priority apps under memory pressure\citep{lmkd}. Windows exposes no public stall-time metric comparable to PSI, so RamFlow combines proxies --- available memory, commit, page-ins, standby --- into a heuristic score (\S\ref{sec:pressure}). This is its largest design limitation.
+\paragraph{Pressure signals}
+Windows exposes no public metric of time lost to resource shortage, so RamFlow combines proxies --- available memory, commit, page-ins, standby --- into a heuristic score (\S\ref{sec:pressure}). This is its largest design limitation.
 
 \paragraph{Closest prior tool}
 ProBalance in the commercial Process Lasso temporarily lowers the priority class of CPU-monopolising background processes to Below Normal and restores it once the condition passes\citep{probalance}. The core idea --- lower background priority to keep the foreground responsive --- is shared. RamFlow differs in that it (i) adjusts memory priority and EcoQoS alongside CPU priority, (ii) adds memory-pressure conditions and a memory-headroom job queue, (iii) journals original values and process identity to disk so restoration is retried even after a crash, and (iv) publishes measurement data, including negative results, with analysis code. We did not compare the two tools experimentally and claim no ranking.
@@ -218,7 +218,7 @@ All experiments ran on one PC: Windows~11 Pro (build 26200), Intel Core i5-13400
 
 \subsection{Common design}
 \paragraph{Paired blocks}
-Each experiment pairs the without and with conditions within a \emph{block}. Inside a block the same foreground and background PIDs and the same external memory allocation were kept. Condition order was shuffled with a fixed seed (E2: 20261111; E3: 20261110), since order and layout alone can bias results\citep{mytkowicz2009}.
+Each experiment pairs the without and with conditions within a \emph{block}. Inside a block the same foreground and background PIDs and the same external memory allocation were kept. Condition order was shuffled with a fixed seed (E2: 20261111; E3: 20261110), since order and layout alone can bias results.
 
 \paragraph{Load}
 The background load is synthetic: eight self-created processes (two threads and 64\,MiB each) repeatedly hashing 64\,KiB chunks with SHA-256. Memory pressure came from an external allocation calibrated once per block toward $\approx$768\,MiB available and then held fixed, touching one byte per page every 2\,s. Allocations were not re-matched per condition, so the tool's own memory cost is included in the results. As a safety rule, 1\,GiB of commit was reserved beforehand, and if commit exceeded 90\% or available memory stayed below 128\,MiB for 2\,s the load was released and the pair censored (this never happened in the main runs).
@@ -227,13 +227,13 @@ The background load is synthetic: eight self-created processes (two threads and 
 Only the background PIDs created by the experiment, with their creation identities, were eligible for adjustment. The measured applications (Chrome, VS Code) and personal processes were never modified. Out-of-scope change requests, restoration of settings, and result hashes were recorded for every condition.
 
 \paragraph{Statistics}
-Requests within a condition are not independent, so they are not treated as samples. For each condition we first computed p95 (the slowest-5\% boundary) and p50, and used the block as the unit of analysis. Tail latency is closer than the mean to perceived stutter, so p95 is the primary metric\citep{dean2013tail}. We report:
+Requests within a condition are not independent, so they are not treated as samples. For each condition we first computed p95 (the slowest-5\% boundary) and p50, and used the block as the unit of analysis. Tail latency is closer than the mean to perceived stutter, so p95 is the primary metric. We report:
 \begin{itemize}
   \item the \textbf{median of block p95s} and its relative change; with $n=5$ the block min--max range is a \numCiLevel\% distribution-free confidence interval for the median;
   \item the \textbf{geometric-mean ratio} (with/without) with a $t$-based 95\% CI on log ratios;
   \item the \textbf{exact sign test} (one-sided) and the \textbf{exact Wilcoxon signed-rank test} (two-sided). With $n=5$ and 5/5 improvements, $p=\numSignP$ and $p=\numWilP$ are the smallest attainable values.
 \end{itemize}
-The low power implied by few blocks is discussed in \S\ref{sec:threats}\citep{kalibera2013,jain1991}.
+The low power implied by few blocks is discussed in \S\ref{sec:threats}.
 
 \subsection{The three experiments}
 \begin{description}[leftmargin=1.2em,style=nextline,itemsep=3pt]
@@ -312,7 +312,7 @@ CPU only (previous vs revised) & \numCpOffFifty & \numCpOnFifty & \numCpOff & \n
 
 In Table~\ref{tab:bgc} and Figure~\ref{fig:bgc}, the median p95 under memory + CPU contention fell from \numMxOff\,ms to \numMxOn\,ms (\numMxRed\%). Per-block reductions clustered tightly at \numMxBlkMin--\numMxBlkMax\%, and the 95\% CI of the geometric-mean reduction was [\numMxGmLo, \numMxGmHi]\%. In every revised condition, all eight background processes were actually adjusted. Available memory just before the task ranged over \numMxAvLo--\numMxAvHi\,MiB.
 
-The CPU-only comparison is instructive. The median (p50) fell from \numCpOffFifty\,ms to \numCpOnFifty\,ms (\numCpFiftyRed\%), but p95 fell by only \numCpRed\%: most requests became faster while the slowest stayed slow. Reporting only means or medians would overstate the effect\citep{dean2013tail}; we report this result rather than omit it. Whether the tail reduction under memory pressure comes from memory priority or from its combination with CPU priority and EcoQoS cannot be separated by this design (\S\ref{sec:threats}).
+The CPU-only comparison is instructive. The median (p50) fell from \numCpOffFifty\,ms to \numCpOnFifty\,ms (\numCpFiftyRed\%), but p95 fell by only \numCpRed\%: most requests became faster while the slowest stayed slow. Reporting only means or medians would overstate the effect; we report this result rather than omit it. Whether the tail reduction under memory pressure comes from memory priority or from its combination with CPU priority and EcoQoS cannot be separated by this design (\S\ref{sec:threats}).
 
 \finding{\textbf{Answer to RQ2.} Under controlled contention for both memory and CPU, making designated background work yield cut foreground p95 by $\approx$40--44\% in 5/5 blocks. With CPU contention alone the median fell but the tail barely moved.}
 
@@ -347,7 +347,7 @@ VS Code edit $\rightarrow$ save & \numVSOff & \numVSOn & \numVSRed\% & \numVSBlk
 
 In Table~\ref{tab:real} and Figure~\ref{fig:real}, p95 latency of the four features fell by \numCSRed--\numVSRed\%. All five blocks improved, so the per-feature exact one-sided sign test gives $p=\numSignP$; with five blocks the two-sided Wilcoxon test is pinned at its minimum $p=\numWilP$. Because features share sessions, we also pooled by \emph{app session}, the independent unit: in all \numSessions{} sessions every feature improved, two-sided sign test $p=\numPooledP$.
 
-Chrome values include the automation round trip. The in-page p95 from input event to the second rAF boundary moved the same way: search \numEfSOff$\rightarrow$\numEfSOn\,ms, sort \numEfOOff$\rightarrow$\numEfOOn\,ms. Latencies without RamFlow (62--99\,ms) sit near the 0.1\,s limit for a response to feel immediate\citep{card1991}, and with RamFlow (32--51\,ms) clearly below it. The second rAF is a rendering-opportunity boundary, not guaranteed display; VS Code values are API completion times, not keystroke-to-popup times.
+Chrome values include the automation round trip. The in-page p95 from input event to the second rAF boundary moved the same way: search \numEfSOff$\rightarrow$\numEfSOn\,ms, sort \numEfOOff$\rightarrow$\numEfOOn\,ms. The second rAF is a rendering-opportunity boundary, not guaranteed display; VS Code values are API completion times, not keystroke-to-popup times.
 
 \finding{\textbf{Answer to RQ3.} The effect seen under controlled load transferred to a real browser renderer and editor features: p95 fell by $\approx$45--49\% for all four features in 5/5 blocks.}
 
@@ -382,7 +382,7 @@ Under scarcity, the only lever is ordering. Our results show that deferring work
 In the CPU-only comparison p50 fell by 43\% but p95 by 4.8\%. Evaluating responsiveness tools by mean or median alone can exaggerate perceived benefit. We fixed the tail as the primary metric and published unfavourable results as well.
 
 \paragraph{Porting to other systems}
-On Linux, PSI provides stall time directly\citep{psi} and cgroup v2 can weight memory and CPU per group of processes, offering a more accurate signal for the same policy\citep{weiner2022tmo}. A Linux edition of RamFlow is being developed in a separate repository and is outside the scope of these measurements.
+Linux exposes stall time directly (PSI) and can divide resources among groups of processes (cgroups), offering a more accurate signal for the same policy. A Linux edition of RamFlow is being developed in a separate repository and is outside the scope of these measurements.
 
 %=====================================================================
 \section{Threats to Validity}
@@ -398,7 +398,7 @@ The Chrome metric includes the automation round trip and does not guarantee disp
 The with condition of E2/E3 changed memory priority, CPU priority and EcoQoS together, so their individual contributions cannot be separated. The with condition includes the real engine and tray and their memory cost, but the engine ran in a measurement test host (sensors, policy, setters and restoration were the production code paths). Allocations were not re-matched per condition, so available memory before each task varied with Windows' natural reclaim (recorded in the CSV). E1 had only two blocks with unequal pressure.
 
 \paragraph{Statistical conclusion validity}
-Each comparison has five blocks. A 5/5 pattern is strong evidence of consistency, but the minimum two-sided exact $p$ is 0.0625, so no single feature can pass a two-sided 0.05 threshold. The session-level pooled sign test ($p=\numPooledP$) is a conservative grouping that avoids cross-feature correlation. Several features were tested without multiplicity correction. The large, consistent effect sizes make a reversal unlikely, but replication on more PCs and blocks is needed\citep{kalibera2013}.
+Each comparison has five blocks. A 5/5 pattern is strong evidence of consistency, but the minimum two-sided exact $p$ is 0.0625, so no single feature can pass a two-sided 0.05 threshold. The session-level pooled sign test ($p=\numPooledP$) is a conservative grouping that avoids cross-feature correlation. Several features were tested without multiplicity correction. The large, consistent effect sizes make a reversal unlikely, but replication on more PCs and blocks is needed.
 
 %=====================================================================
 \section{Conclusion}
